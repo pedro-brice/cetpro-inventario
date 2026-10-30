@@ -239,7 +239,7 @@ st.sidebar.title("📌 Menú de Equipos")
 opcion_menu = st.sidebar.radio("Seleccione Categoría:", list(CATEGORIAS.keys()))
 categoria_seleccionada = CATEGORIAS[opcion_menu]
 
-cat_mobile = st.selectbox("📱 Selección rápida de categoría (Celular):", list(CATEGORIAS.keys()), index=list(CATEGORIAS.keys()).index(opcion_menu))
+cat_mobile = st.selectbox("📱 Selección rápida de categoría:", list(CATEGORIAS.keys()), index=list(CATEGORIAS.keys()).index(opcion_menu))
 if cat_mobile != opcion_menu:
     categoria_seleccionada = CATEGORIAS[cat_mobile]
 
