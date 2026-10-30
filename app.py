@@ -208,14 +208,14 @@ if os.path.exists("logo.png"):
         st.markdown("""
             <div class="header-container">
                 <h1 class="header-title">CETPRO La Arena</h1>
-                <div class="header-subtitle">Sistema de Control de Inventario Institucional</div>
+                <div class="header-subtitle">Sistema de Control de Inventario Institucional del Laboratorio de PSTI</div>
             </div>
         """, unsafe_allow_html=True)
 else:
     st.markdown("""
         <div class="header-container">
             <h1 class="header-title">CETPRO La Arena</h1>
-            <div class="header-subtitle">Sistema de Control de Inventario Institucional</div>
+            <div class="header-subtitle">Sistema de Control de Inventario Institucional del Laboratorio de PSTI</div>
         </div>
     """, unsafe_allow_html=True)
 
