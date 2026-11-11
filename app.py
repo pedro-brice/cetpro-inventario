@@ -21,10 +21,9 @@ def get_connection():
 def init_db():
   conn = get_connection()
   cursor = conn.cursor()
-  # Forzar actualización recreando la tabla con la estructura limpia
-  cursor.execute("DROP TABLE IF EXISTS inventario")
+  # Se usa IF NOT EXISTS para conservar los datos guardados previamente
   cursor.execute("""
-        CREATE TABLE inventario (
+        CREATE TABLE IF NOT EXISTS inventario (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             especialidad TEXT,
             codigo TEXT,
@@ -43,7 +42,7 @@ def init_db():
   conn.close()
 
 
-# Inicializar base de datos limpia
+# Inicializar base de datos conservando registros
 init_db()
 
 # --- ESPECIALIDADES OFICIALES DEL CETPRO ---
@@ -65,7 +64,7 @@ if "admin_password" not in st.session_state:
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
-    "<h1 style='text-align: center; color: #008000;'>CETPRO La Arena</h1>",
+    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -163,11 +162,11 @@ st.subheader(f"Gestión de Inventario: {especialidad_sel}")
 # Registrar nuevo componente (Solo Administrador)
 if st.session_state.logged_in:
   with st.expander(f"➕ Registrar Nuevo Equipo en {especialidad_sel}"):
-    with st.form("form_registrar"):
+    with st.form("form_registrar", clear_on_submit=True):
       col1, col2, col3 = st.columns(3)
 
       with col1:
-        codigo = st.text_input("Código Patrimonial")
+        codigo = st.text_input("Código Patrimonial / Interno")
         equipo = st.text_input("Equipo / Bien")
         marca = st.text_input("Marca")
 
