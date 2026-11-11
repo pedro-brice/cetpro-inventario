@@ -17,7 +17,7 @@ st.markdown(
     <style>
     /* Fondo general de la aplicación */
     .stApp {
-        background-color: #FFF59D;
+        background-color: #FDFD96;
     }
     /* Estilo para los contenedores principales y tarjetas */
     div.block-container {
