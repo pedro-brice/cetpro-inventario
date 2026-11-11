@@ -4,15 +4,32 @@ import sqlite3
 import pandas as pd
 import streamlit as st
 
-# --- CONFIGURACIÓN DE PÁGINA ---
+# --- CONFIGURACIÓN DE PÁGINA Y ESTILO (FONDO AMARILLO CLARITO) ---
 st.set_page_config(
     page_title="Sistema de Inventario - CETPRO La Arena",
     page_icon="📦",
     layout="wide",
 )
 
+# Inyectar CSS personalizado para cambiar el fondo a un amarillo clarito institucional
+st.markdown(
+    """
+    <style>
+    /* Fondo general de la aplicación */
+    .stApp {
+        background-color: #FFFDE7;
+    }
+    /* Estilo para los contenedores principales y tarjetas */
+    div.block-container {
+        padding-top: 2rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-# --- INICIALIZACIÓN Y CONEXIÓN DE BASE DE DATOS NUEVA ---
+
+# --- INICIALIZACIÓN Y CONEXIÓN DE BASE DE DATOS ---
 def get_connection():
   conn = sqlite3.connect("inventario_v2.db", check_same_thread=False)
   return conn
@@ -41,7 +58,6 @@ def init_db():
   conn.close()
 
 
-# Inicializar base de datos limpia
 init_db()
 
 # --- ESPECIALIDADES OFICIALES DEL CETPRO ---
@@ -63,7 +79,7 @@ if "admin_password" not in st.session_state:
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
-    "<h1 style='text-align: center; color: #008000;'>CETPRO La Arena</h1>",
+    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -165,7 +181,7 @@ if st.session_state.logged_in:
       col1, col2, col3 = st.columns(3)
 
       with col1:
-        codigo = st.text_input("Código Patrimonial")
+        codigo = st.text_input("Código Patrimonial / Interno")
         equipo = st.text_input("Equipo / Bien")
         marca = st.text_input("Marca")
 
