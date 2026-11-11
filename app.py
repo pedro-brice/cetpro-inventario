@@ -12,17 +12,16 @@ st.set_page_config(
 )
 
 
-# --- INICIALIZACIÓN Y CONEXIÓN DE BASE DE DATOS ---
+# --- INICIALIZACIÓN Y CONEXIÓN DE BASE DE DATOS NUEVA ---
 def get_connection():
-  conn = sqlite3.connect("inventario.db", check_same_thread=False)
+  # Usamos un archivo nuevo (v2) para evitar conflictos con la estructura anterior
+  conn = sqlite3.connect("inventario_v2.db", check_same_thread=False)
   return conn
 
 
 def init_db():
   conn = get_connection()
   cursor = conn.cursor()
-
-  # Crear tabla si no existe
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS inventario (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,35 +38,11 @@ def init_db():
             observaciones TEXT
         )
     """)
-
-  # Verificar si la tabla tiene la estructura nueva (campo 'codigo')
-  cursor.execute("PRAGMA table_info(inventario)")
-  columns = [info[1] for info in cursor.fetchall()]
-
-  if "codigo" not in columns:
-    cursor.execute("DROP TABLE inventario")
-    cursor.execute("""
-            CREATE TABLE inventario (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                especialidad TEXT,
-                codigo TEXT,
-                equipo TEXT,
-                marca TEXT,
-                modelo TEXT,
-                serie TEXT,
-                estado TEXT,
-                ubicacion TEXT,
-                responsables TEXT,
-                fecha TEXT,
-                observaciones TEXT
-            )
-        """)
-
   conn.commit()
   conn.close()
 
 
-# Inicializar base de datos
+# Inicializar base de datos limpia
 init_db()
 
 # --- ESPECIALIDADES OFICIALES DEL CETPRO ---
@@ -89,7 +64,7 @@ if "admin_password" not in st.session_state:
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
-    "<h1 style='text-align: center; color: #008000;'>CETPRO La Arena</h1>",
+    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -191,7 +166,7 @@ if st.session_state.logged_in:
       col1, col2, col3 = st.columns(3)
 
       with col1:
-        codigo = st.text_input("Código Patrimonial")
+        codigo = st.text_input("Código Patrimonial / Interno")
         equipo = st.text_input("Equipo / Bien")
         marca = st.text_input("Marca")
 
