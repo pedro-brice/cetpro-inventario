@@ -11,9 +11,15 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- INICIALIZACIÓN DE LA BASE DE DATOS SQLITE ---
+
+# --- INICIALIZACIÓN Y CONEXIÓN DE BASE DE DATOS ---
+def get_connection():
+  conn = sqlite3.connect("inventario.db", check_same_thread=False)
+  return conn
+
+
 def init_db():
-  conn = sqlite3.connect("inventario.db")
+  conn = get_connection()
   cursor = conn.cursor()
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS inventario (
@@ -30,6 +36,8 @@ def init_db():
   conn.commit()
   conn.close()
 
+
+# Asegurar la creación de la tabla antes de cualquier consulta
 init_db()
 
 # --- ESPECIALIDADES OFICIALES DEL CETPRO ---
@@ -89,7 +97,7 @@ else:
     st.session_state.logged_in = False
     st.rerun()
 
-# Sección para cambiar contraseña
+# Modal para cambiar contraseña
 if (
     st.session_state.get("logged_in", False)
     and st.session_state.get("changing_password", False)
@@ -109,22 +117,33 @@ if (
       else:
         st.error("Las contraseñas no coinciden o están vacías.")
 
-# --- FUNCIONES DE BASE DE DATOS (SQLITE) ---
+
+# --- FUNCIONES DE MANEJO DE DATOS ---
 def obtener_inventario(especialidad):
-  conn = sqlite3.connect("inventario.db")
-  df = pd.read_sql_query(
-      "SELECT * FROM inventario WHERE especialidad = ?",
-      conn,
-      params=(especialidad,),
-  )
-  conn.close()
+  conn = get_connection()
+  try:
+    df = pd.read_sql_query(
+        "SELECT * FROM inventario WHERE especialidad = ?",
+        conn,
+        params=(especialidad,),
+    )
+  except Exception:
+    df = pd.DataFrame()
+  finally:
+    conn.close()
   return df
 
+
 def obtener_todo_inventario():
-  conn = sqlite3.connect("inventario.db")
-  df = pd.read_sql_query("SELECT * FROM inventario", conn)
-  conn.close()
+  conn = get_connection()
+  try:
+    df = pd.read_sql_query("SELECT * FROM inventario", conn)
+  except Exception:
+    df = pd.DataFrame()
+  finally:
+    conn.close()
   return df
+
 
 # --- CUERPO PRINCIPAL ---
 st.subheader(f"Gestión de Inventario: {especialidad_sel}")
@@ -148,7 +167,7 @@ if st.session_state.logged_in:
 
       if btn_submit:
         if nombre_item.strip() != "":
-          conn = sqlite3.connect("inventario.db")
+          conn = get_connection()
           cursor = conn.cursor()
           cursor.execute(
               """
@@ -172,13 +191,12 @@ if st.session_state.logged_in:
         else:
           st.warning("El nombre del componente es obligatorio.")
 
-# Mostrar registros actuales
+# Mostrar registros de la especialidad
 df_actual = obtener_inventario(especialidad_sel)
 
 if not df_actual.empty:
   st.dataframe(df_actual, use_container_width=True)
 
-  # Opción para eliminar registros si es admin
   if st.session_state.logged_in:
     st.write("---")
     st.subheader("Eliminar Registro")
@@ -190,7 +208,7 @@ if not df_actual.empty:
           "Seleccione el ID del registro a eliminar", ids_disponibles
       )
       if st.button("Eliminar Registro Seleccionado"):
-        conn = sqlite3.connect("inventario.db")
+        conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM inventario WHERE id = ?", (id_a_borrar,))
         conn.commit()
@@ -200,7 +218,7 @@ if not df_actual.empty:
 else:
   st.info("No hay registros guardados en esta especialidad.")
 
-# --- BOTÓN DE EXPORTAR A EXCEL ---
+# --- BOTÓN DE EXPORTACIÓN A EXCEL ---
 st.write("---")
 df_total = obtener_todo_inventario()
 
@@ -209,7 +227,7 @@ if not df_total.empty:
   with pd.ExcelWriter(output, engine="openpyxl") as writer:
     for esp in ESPECIALIDADES:
       df_esp = df_total[df_total["especialidad"] == esp]
-      nombre_hoja = esp[:31]  # Excel limita los nombres de hoja a 31 caracteres
+      nombre_hoja = esp[:31]  # Límite de caracteres para pestañas de Excel
       df_esp.to_excel(writer, sheet_name=nombre_hoja, index=False)
   output.seek(0)
 
