@@ -79,7 +79,7 @@ if "admin_password" not in st.session_state:
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
-    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
+    "<h1 style='text-align: center; color: #008000;'>CETPRO La Arena</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -181,7 +181,7 @@ if st.session_state.logged_in:
       col1, col2, col3 = st.columns(3)
 
       with col1:
-        codigo = st.text_input("Código Patrimonial / Interno")
+        codigo = st.text_input("Código Patrimonial")
         equipo = st.text_input("Equipo / Bien")
         marca = st.text_input("Marca")
 
