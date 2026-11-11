@@ -1,405 +1,225 @@
-import streamlit as st
-import sqlite3
-import pandas as pd
 from datetime import datetime
 import io
-import os
+import sqlite3
+import pandas as pd
+import streamlit as st
 
-# ==========================================
-# 1. CONFIGURACIÓN DE PÁGINA Y ESTILOS (CSS)
-# ==========================================
+# --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
-    page_title="CETPRO La Arena - Inventario",
+    page_title="Sistema de Inventario - CETPRO La Arena",
     page_icon="📦",
     layout="wide",
-    initial_sidebar_state="expanded"
 )
 
-st.markdown("""
-    <style>
-    .header-container {
-        background-color: #006633; /* Verde Institucional */
-        padding: 20px;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        margin-bottom: 25px;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
-    }
-    .header-title {
-        font-size: 2.4rem;
-        font-weight: 800;
-        margin: 0;
-        color: #FFFFFF;
-    }
-    .header-subtitle {
-        font-size: 1.1rem;
-        margin-top: 5px;
-        font-weight: 400;
-        color: #E0E0E0;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# ==========================================
-# 2. BASE DE DATOS LOCAL (SQLite) Y CONFIGURACIÓN
-# ==========================================
-DB_NAME = "inventario.db"
-
+# --- INICIALIZACIÓN DE LA BASE DE DATOS SQLITE ---
 def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    # Tabla de inventario
-    c.execute('''
+  conn = sqlite3.connect("inventario.db")
+  cursor = conn.cursor()
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS inventario (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categoria TEXT NOT NULL,
-            codigo TEXT UNIQUE NOT NULL,
-            equipo TEXT NOT NULL,
-            marca TEXT,
-            modelo TEXT,
-            serie TEXT,
+            especialidad TEXT,
+            nombre TEXT,
+            cantidad INTEGER,
             estado TEXT,
-            ubicacion TEXT,
             responsable TEXT,
-            fecha TEXT,
-            observaciones TEXT
+            observacion TEXT,
+            fecha TEXT
         )
-    ''')
-    # Tabla de configuración para la contraseña del admin
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS config (
-            clave TEXT PRIMARY KEY,
-            valor TEXT NOT NULL
-        )
-    ''')
-    # Contraseña por defecto si no existe
-    c.execute("SELECT valor FROM config WHERE clave = 'password_admin'")
-    if not c.fetchone():
-        c.execute("INSERT INTO config (clave, valor) VALUES ('password_admin', 'cetpro2026')")
-    
-    conn.commit()
-    conn.close()
+    """)
+  conn.commit()
+  conn.close()
 
 init_db()
 
-def obtener_password_admin():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("SELECT valor FROM config WHERE clave = 'password_admin'")
-    row = c.fetchone()
-    conn.close()
-    return row[0] if row else "cetpro2026"
+# --- ESPECIALIDADES OFICIALES DEL CETPRO ---
+ESPECIALIDADES = [
+    "Plataformas y servicios de TI",
+    "Fabricación de prendas de vestir",
+    "Operaciones de Almacenamiento",
+    "Peluquería y Barbería",
+    "Mecánica de Motos y Vehículos Afines",
+    "Servicios Básicos Gastronómicos",
+    "Panadería y Pastelería",
+]
 
-def actualizar_password_admin(nueva_pass):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("UPDATE config SET valor = ? WHERE clave = 'password_admin'", (nueva_pass,))
-    conn.commit()
-    conn.close()
+# --- GESTIÓN DE SESIÓN Y CONTRASEÑA ---
+if "logged_in" not in st.session_state:
+  st.session_state.logged_in = False
+if "admin_password" not in st.session_state:
+  st.session_state.admin_password = "admin"
 
-def guardar_item(data):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    try:
-        c.execute('''
-            INSERT INTO inventario (categoria, codigo, equipo, marca, modelo, serie, estado, ubicacion, responsable, fecha, observaciones)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', data)
+# --- TÍTULO PRINCIPAL ---
+st.markdown(
+    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<h3 style='text-align: center; color: #4B5563;'>Sistema de Control de"
+    " Inventario Institucional</h3>",
+    unsafe_allow_html=True,
+)
+st.write("---")
+
+# --- MENÚ LATERAL (SIDEBAR) ---
+st.sidebar.title("Navegación")
+especialidad_sel = st.sidebar.selectbox(
+    "Seleccione Especialidad:", ESPECIALIDADES
+)
+
+st.sidebar.write("---")
+st.sidebar.subheader("Control de Acceso")
+
+if not st.session_state.logged_in:
+  password_input = st.sidebar.text_input(
+      "Contraseña de Administrador", type="password"
+  )
+  if st.sidebar.button("Iniciar Sesión"):
+    if password_input == st.session_state.admin_password:
+      st.session_state.logged_in = True
+      st.sidebar.success("¡Acceso concedido!")
+      st.rerun()
+    else:
+      st.sidebar.error("Contraseña incorrecta")
+else:
+  st.sidebar.success("Modo Administrador Activo")
+  if st.sidebar.button("🔑 Cambiar Contraseña"):
+    st.session_state.changing_password = True
+  if st.sidebar.button("Cerrar Sesión"):
+    st.session_state.logged_in = False
+    st.rerun()
+
+# Sección para cambiar contraseña
+if (
+    st.session_state.get("logged_in", False)
+    and st.session_state.get("changing_password", False)
+):
+  with st.sidebar.form("form_cambiar_pass"):
+    st.write("Cambiar Contraseña")
+    nueva_pass = st.text_input("Nueva Contraseña", type="password")
+    confirmar_pass = st.text_input("Confirmar Contraseña", type="password")
+    btn_guardar_pass = st.form_submit_button("Actualizar")
+
+    if btn_guardar_pass:
+      if nueva_pass == confirmar_pass and nueva_pass != "":
+        st.session_state.admin_password = nueva_pass
+        st.session_state.changing_password = False
+        st.success("¡Contraseña actualizada con éxito!")
+        st.rerun()
+      else:
+        st.error("Las contraseñas no coinciden o están vacías.")
+
+# --- FUNCIONES DE BASE DE DATOS (SQLITE) ---
+def obtener_inventario(especialidad):
+  conn = sqlite3.connect("inventario.db")
+  df = pd.read_sql_query(
+      "SELECT * FROM inventario WHERE especialidad = ?",
+      conn,
+      params=(especialidad,),
+  )
+  conn.close()
+  return df
+
+def obtener_todo_inventario():
+  conn = sqlite3.connect("inventario.db")
+  df = pd.read_sql_query("SELECT * FROM inventario", conn)
+  conn.close()
+  return df
+
+# --- CUERPO PRINCIPAL ---
+st.subheader(f"Gestión de Inventario: {especialidad_sel}")
+
+# Registrar nuevo componente (Solo Administrador)
+if st.session_state.logged_in:
+  with st.expander(f"➕ Registrar Nuevo Componente en {especialidad_sel}"):
+    with st.form("form_registrar"):
+      col1, col2 = st.columns(2)
+      with col1:
+        nombre_item = st.text_input("Nombre del Bien / Equipo")
+        cantidad = st.number_input("Cantidad", min_value=1, value=1, step=1)
+      with col2:
+        estado = st.selectbox(
+            "Estado", ["Bueno", "Regular", "Malo", "En Mantenimiento"]
+        )
+        responsable = st.text_input("Responsable / Docente")
+
+      observacion = st.text_area("Observaciones")
+      btn_submit = st.form_submit_button("Guardar Registro")
+
+      if btn_submit:
+        if nombre_item.strip() != "":
+          conn = sqlite3.connect("inventario.db")
+          cursor = conn.cursor()
+          cursor.execute(
+              """
+                        INSERT INTO inventario (especialidad, nombre, cantidad, estado, responsable, observacion, fecha)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+              (
+                  especialidad_sel,
+                  nombre_item,
+                  int(cantidad),
+                  estado,
+                  responsable,
+                  observacion,
+                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+              ),
+          )
+          conn.commit()
+          conn.close()
+          st.success("¡Registro guardado exitosamente!")
+          st.rerun()
+        else:
+          st.warning("El nombre del componente es obligatorio.")
+
+# Mostrar registros actuales
+df_actual = obtener_inventario(especialidad_sel)
+
+if not df_actual.empty:
+  st.dataframe(df_actual, use_container_width=True)
+
+  # Opción para eliminar registros si es admin
+  if st.session_state.logged_in:
+    st.write("---")
+    st.subheader("Eliminar Registro")
+    ids_disponibles = (
+        df_actual["id"].tolist() if "id" in df_actual.columns else []
+    )
+    if ids_disponibles:
+      id_a_borrar = st.selectbox(
+          "Seleccione el ID del registro a eliminar", ids_disponibles
+      )
+      if st.button("Eliminar Registro Seleccionado"):
+        conn = sqlite3.connect("inventario.db")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM inventario WHERE id = ?", (id_a_borrar,))
         conn.commit()
         conn.close()
-        return True, "Registro guardado correctamente."
-    except sqlite3.IntegrityError:
-        conn.close()
-        return False, "Error: El código ingresado ya existe en la base de datos."
-
-def actualizar_item(item_id, data):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('''
-        UPDATE inventario 
-        SET categoria=?, codigo=?, equipo=?, marca=?, modelo=?, serie=?, estado=?, ubicacion=?, responsable=?, fecha=?, observaciones=?
-        WHERE id=?
-    ''', (*data, item_id))
-    conn.commit()
-    conn.close()
-
-def obtener_datos(categoria=None):
-    conn = sqlite3.connect(DB_NAME)
-    if categoria and categoria != "Todos":
-        query = f"SELECT * FROM inventario WHERE categoria = '{categoria}'"
-    else:
-        query = "SELECT * FROM inventario"
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return df
-
-def obtener_registro_por_id(item_id):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("SELECT * FROM inventario WHERE id = ?", (item_id,))
-    row = c.fetchone()
-    conn.close()
-    return row
-
-def eliminar_registro(item_id):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute("DELETE FROM inventario WHERE id = ?", (item_id,))
-    conn.commit()
-    conn.close()
-
-# ==========================================
-# 3. CONTROL DE ACCESO Y CAMBIO DE CONTRASEÑA
-# ==========================================
-if 'autenticado' not in st.session_state:
-    st.session_state['autenticado'] = False
-
-def login():
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔒 Control de Acceso")
-    
-    password_actual_db = obtener_password_admin()
-
-    if not st.session_state['autenticado']:
-        pwd = st.sidebar.text_input("Contraseña de Administrador", type="password")
-        if st.sidebar.button("Ingresar"):
-            if pwd == password_actual_db:
-                st.session_state['autenticado'] = True
-                st.sidebar.success("Acceso concedido")
-                st.rerun()
-            else:
-                st.sidebar.error("Contraseña incorrecta")
-    else:
-        st.sidebar.info("Modo Administrador Activo")
-        
-        # Opción para cambiar la contraseña dentro del panel de admin
-        with st.sidebar.expander("🔑 Cambiar Contraseña"):
-            with st.form("form_cambiar_pass"):
-                pass_antigua = st.text_input("Contraseña Actual", type="password")
-                pass_nueva = st.text_input("Nueva Contraseña", type="password")
-                pass_repetir = st.text_input("Confirmar Nueva Contraseña", type="password")
-                btn_cambiar = st.form_submit_button("Actualizar Clave")
-                
-                if btn_cambiar:
-                    if pass_antigua != password_actual_db:
-                        st.error("La contraseña actual es incorrecta.")
-                    elif not pass_nueva:
-                        st.error("La nueva contraseña no puede estar vacía.")
-                    elif pass_nueva != pass_repetir:
-                        st.error("Las nuevas contraseñas no coinciden.")
-                    else:
-                        actualizar_password_admin(pass_nueva)
-                        st.success("¡Contraseña actualizada con éxito!")
-                        st.rerun()
-
-        if st.sidebar.button("Cerrar Sesión"):
-            st.session_state['autenticado'] = False
-            st.rerun()
-
-# ==========================================
-# 4. ENCABEZADO CON LOGO Y VERDE INSTITUCIONAL
-# ==========================================
-if os.path.exists("logo.png"):
-    col_logo, col_titulo = st.columns([1, 4])
-    with col_logo:
-        st.image("logo.png", width=120)
-    with col_titulo:
-        st.markdown("""
-            <div class="header-container">
-                <h1 class="header-title">CETPRO La Arena</h1>
-                <div class="header-subtitle">Sistema de Control de Inventario Institucional del Laboratorio de PSTI</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.success("Registro eliminado correctamente.")
+        st.rerun()
 else:
-    st.markdown("""
-        <div class="header-container">
-            <h1 class="header-title">CETPRO La Arena</h1>
-            <div class="header-subtitle">Sistema de Control de Inventario Institucional del Laboratorio de PSTI</div>
-        </div>
-    """, unsafe_allow_html=True)
+  st.info("No hay registros guardados en esta especialidad.")
 
-CATEGORIAS = {
-    "🌐 Ver Todos los Registros": "Todos",
-    "🖱️ Mouse": "Mouse",
-    "🖥️ Computadora": "Computadora",
-    "💻 Laptop": "Laptop",
-    "⌨️ Teclado": "Teclado",
-    "🌀 Ventilador": "Ventilador",
-    "🔊 Parlantes": "Parlantes",
-    "🗄️ Escritorio": "Escritorio",
-    "🪑 Sillas": "Sillas",
-    "🧍 Unipersonales": "Unipersonales",
-    "🟫 Mesas": "Mesas",
-    "🔌 Cargador": "Cargador",
-    "⚡ Supresor de Picos": "Supresor de Picos"
-}
+# --- BOTÓN DE EXPORTAR A EXCEL ---
+st.write("---")
+df_total = obtener_todo_inventario()
 
-st.sidebar.title("📌 Menú de Equipos")
-opcion_menu = st.sidebar.radio("Seleccione Categoría:", list(CATEGORIAS.keys()))
-categoria_seleccionada = CATEGORIAS[opcion_menu]
+if not df_total.empty:
+  output = io.BytesIO()
+  with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    for esp in ESPECIALIDADES:
+      df_esp = df_total[df_total["especialidad"] == esp]
+      nombre_hoja = esp[:31]  # Excel limita los nombres de hoja a 31 caracteres
+      df_esp.to_excel(writer, sheet_name=nombre_hoja, index=False)
+  output.seek(0)
 
-cat_mobile = st.selectbox("📱 Selección rápida de categoría:", list(CATEGORIAS.keys()), index=list(CATEGORIAS.keys()).index(opcion_menu))
-if cat_mobile != opcion_menu:
-    categoria_seleccionada = CATEGORIAS[cat_mobile]
-
-login()
-
-# ==========================================
-# 5. FORMULARIO DE REGISTRO
-# ==========================================
-if categoria_seleccionada == "Todos":
-    st.header("📋 Inventario General (Todos los Registros)")
-else:
-    st.header(f"Gestión de Inventario: {categoria_seleccionada}")
-
-    if st.session_state['autenticado']:
-        with st.expander(f"➕ Registrar Nuevo Componente en {categoria_seleccionada}", expanded=False):
-            with st.form("form_inventario", clear_on_submit=True):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    codigo = st.text_input("Código de Inventario *")
-                    equipo = st.text_input("Equipo / Nombre *", value=categoria_seleccionada)
-                    marca = st.text_input("Marca")
-                    modelo = st.text_input("Modelo")
-                    serie = st.text_input("Número de Serie")
-                
-                with col2:
-                    estado = st.selectbox("Estado del Equipo", ["Bueno", "Regular", "Malo", "En Mantenimiento", "Inoperativo"])
-                    ubicacion = st.text_input("Ubicación / Taller / Aula")
-                    responsable = st.text_input("Responsable(s)")
-                    fecha = st.date_input("Fecha de Registro", datetime.now()).strftime("%Y-%m-%d")
-                    observaciones = st.text_area("Observaciones")
-
-                guardar = st.form_submit_button("Guardar Registro")
-                
-                if guardar:
-                    if not codigo or not equipo:
-                        st.warning("Los campos 'Código' y 'Equipo' son obligatorios.")
-                    else:
-                        datos = (categoria_seleccionada, codigo, equipo, marca, modelo, serie, estado, ubicacion, responsable, fecha, observaciones)
-                        exito, msg = guardar_item(datos)
-                        if exito:
-                            st.success(msg)
-                            st.rerun()
-                        else:
-                            st.error(msg)
-    else:
-        st.warning("🔒 Inicie sesión como Administrador en la barra lateral para agregar registros.")
-
-# ==========================================
-# 6. VISUALIZACIÓN, EDICIÓN Y EXPORTACIÓN CLASIFICADA
-# ==========================================
-df_datos = obtener_datos(categoria_seleccionada)
-
-if not df_datos.empty:
-    st.dataframe(df_datos, use_container_width=True)
-
-    if st.session_state['autenticado']:
-        st.markdown("---")
-        st.subheader("🛠️ Panel de Gestión de Registros (Admin)")
-        
-        tab_editar, tab_eliminar = st.tabs(["✏️ Editar Registro", "🗑️ Eliminar Registro"])
-        
-        df_todos_registros = obtener_datos("Todos")
-        
-        with tab_editar:
-            if not df_todos_registros.empty:
-                opciones_registros = [
-                    f"Código: {row['codigo']} | Equipo: {row['equipo']} ({row['categoria']})"
-                    for _, row in df_todos_registros.iterrows()
-                ]
-                seleccion_edit = st.selectbox("Seleccione el equipo que desea editar:", opciones_registros, key="sel_edit")
-                
-                idx_seleccionado = opciones_registros.index(seleccion_edit)
-                id_editar = int(df_todos_registros.iloc[idx_seleccionado]['id'])
-                
-                registro_actual = obtener_registro_por_id(id_editar)
-                
-                if registro_actual:
-                    cat_idx = list(CATEGORIAS.values()).index(registro_actual[1]) if registro_actual[1] in CATEGORIAS.values() else 0
-                    estados_lista = ["Bueno", "Regular", "Malo", "En Mantenimiento", "Inoperativo"]
-                    est_idx = estados_lista.index(registro_actual[7]) if registro_actual[7] in estados_lista else 0
-                    
-                    try:
-                        fecha_obj = datetime.strptime(registro_actual[10], "%Y-%m-%d").date()
-                    except:
-                        fecha_obj = datetime.now().date()
-
-                    with st.form("form_edicion"):
-                        st.info(f"Editando: **{registro_actual[3]}** (Código: {registro_actual[2]})")
-                        col_e1, col_e2 = st.columns(2)
-                        
-                        with col_e1:
-                            nueva_categoria = st.selectbox("Categoría", list(CATEGORIAS.values()), index=cat_idx)
-                            nuevo_codigo = st.text_input("Código de Inventario", value=registro_actual[2])
-                            nuevo_equipo = st.text_input("Equipo / Nombre", value=registro_actual[3])
-                            nueva_marca = st.text_input("Marca", value=str(registro_actual[4] or ""))
-                            nuevo_modelo = st.text_input("Modelo", value=str(registro_actual[5] or ""))
-                            nueva_serie = st.text_input("Número de Serie", value=str(registro_actual[6] or ""))
-                        
-                        with col_e2:
-                            nuevo_estado = st.selectbox("Estado del Equipo", estados_lista, index=est_idx)
-                            nueva_ubicacion = st.text_input("Ubicación / Taller / Aula", value=str(registro_actual[8] or ""))
-                            nuevo_responsable = st.text_input("Responsable(s)", value=str(registro_actual[9] or ""))
-                            nueva_fecha = st.date_input("Fecha", value=fecha_obj)
-                            nuevas_observaciones = st.text_area("Observaciones", value=str(registro_actual[11] or ""))
-
-                        btn_actualizar = st.form_submit_button("Guardar Cambios")
-                        
-                        if btn_actualizar:
-                            datos_actualizados = (
-                                nueva_categoria, nuevo_codigo, nuevo_equipo, nueva_marca, 
-                                nuevo_modelo, nueva_serie, nuevo_estado, nueva_ubicacion, 
-                                nuevo_responsable, nueva_fecha.strftime("%Y-%m-%d"), nuevas_observaciones
-                            )
-                            actualizar_item(id_editar, datos_actualizados)
-                            st.success(f"¡Registro actualizado correctamente!")
-                            st.rerun()
-            else:
-                st.info("No hay registros disponibles para editar.")
-
-        with tab_eliminar:
-            if not df_todos_registros.empty:
-                opciones_eliminar = [
-                    f"Código: {row['codigo']} | Equipo: {row['equipo']} ({row['categoria']})"
-                    for _, row in df_todos_registros.iterrows()
-                ]
-                seleccion_del = st.selectbox("Seleccione el equipo a eliminar completamente:", opciones_eliminar, key="sel_del")
-                idx_del = opciones_eliminar.index(seleccion_del)
-                id_eliminar = int(df_todos_registros.iloc[idx_del]['id'])
-                
-                if st.button("Eliminar Registro Definitivamente"):
-                    eliminar_registro(id_eliminar)
-                    st.success(f"¡El equipo seleccionado ha sido eliminado por completo de la base de datos!")
-                    st.rerun()
-            else:
-                st.info("No hay registros disponibles para eliminar.")
-
-    st.markdown("---")
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        df_completo = obtener_datos("Todos")
-        df_completo.to_excel(writer, sheet_name="Inventario General", index=False)
-        
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute("SELECT DISTINCT categoria FROM inventario")
-        categorias_existentes = [row[0] for row in cursor.fetchall()]
-        conn.close()
-        
-        for cat in categorias_existentes:
-            df_cat = obtener_datos(cat)
-            nombre_hoja = cat[:30].replace("/", "-").replace("\\", "-")
-            if not df_cat.empty:
-                df_cat.to_excel(writer, sheet_name=nombre_hoja, index=False)
-    
-    st.download_button(
-        label="📥 Exportar Inventario Clasificado a Excel (.xlsx)",
-        data=buffer.getvalue(),
-        file_name=f"Inventario_CETPRO_La_Arena_{datetime.now().strftime('%Y%m%d')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-else:
-    st.info("No hay registros guardados en esta categoría.")
+  st.download_button(
+      label="📊 Exportar Todo el Inventario Clasificado a Excel (.xlsx)",
+      data=output,
+      file_name=(
+          f"Inventario_CETPRO_La_Arena_{datetime.now().strftime('%Y%m%d')}.xlsx"
+      ),
+      mime=(
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ),
+  )
