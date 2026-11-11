@@ -59,7 +59,7 @@ if "admin_password" not in st.session_state:
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
-    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
+    "<h1 style='text-align: center; color: #008000;'>CETPRO La Arena</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
