@@ -45,7 +45,6 @@ def init_db():
   columns = [info[1] for info in cursor.fetchall()]
 
   if "codigo" not in columns:
-    # Si tiene la estructura vieja, actualizarla limpiando la tabla una sola vez
     cursor.execute("DROP TABLE inventario")
     cursor.execute("""
             CREATE TABLE inventario (
@@ -90,7 +89,7 @@ if "admin_password" not in st.session_state:
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
-    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
+    "<h1 style='text-align: center; color: #008000;'>CETPRO La Arena</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -192,21 +191,21 @@ if st.session_state.logged_in:
       col1, col2, col3 = st.columns(3)
 
       with col1:
-        codigo = st.text_input("Código Patrimonial / Interno")
-        modelo = st.text_input("Modelo")
-        ubicacion = st.text_input("Ubicación / Taller")
+        codigo = st.text_input("Código Patrimonial")
+        equipo = st.text_input("Equipo / Bien")
+        marca = st.text_input("Marca")
 
       with col2:
-        equipo = st.text_input("Equipo / Bien")
+        modelo = st.text_input("Modelo")
         serie = st.text_input("N° de Serie")
-        responsables = st.text_input("Responsable(s)")
-        
-      with col3:
-        marca = st.text_input("Marca")
         estado = st.selectbox(
             "Estado", ["Bueno", "Regular", "Malo", "En Mantenimiento"]
         )
-         fecha = st.date_input(
+
+      with col3:
+        ubicacion = st.text_input("Ubicación / Taller")
+        responsables = st.text_input("Responsable(s)")
+        fecha = st.date_input(
             "Fecha de Registro", value=datetime.now()
         ).strftime("%Y-%m-%d")
 
