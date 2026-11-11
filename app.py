@@ -21,9 +21,10 @@ def get_connection():
 def init_db():
   conn = get_connection()
   cursor = conn.cursor()
-  # Se crea la tabla con los nuevos campos solicitados
+  # Forzar actualización recreando la tabla con la estructura limpia
+  cursor.execute("DROP TABLE IF EXISTS inventario")
   cursor.execute("""
-        CREATE TABLE IF NOT EXISTS inventario (
+        CREATE TABLE inventario (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             especialidad TEXT,
             codigo TEXT,
@@ -42,7 +43,7 @@ def init_db():
   conn.close()
 
 
-# Asegurar la creación/actualización de la tabla
+# Inicializar base de datos limpia
 init_db()
 
 # --- ESPECIALIDADES OFICIALES DEL CETPRO ---
@@ -180,9 +181,9 @@ if st.session_state.logged_in:
       with col3:
         ubicacion = st.text_input("Ubicación / Taller")
         responsables = st.text_input("Responsable(s)")
-        fecha = st.date_input("Fecha de Registro", value=datetime.now()).strftime(
-            "%Y-%m-%d"
-        )
+        fecha = st.date_input(
+            "Fecha de Registro", value=datetime.now()
+        ).strftime("%Y-%m-%d")
 
       observaciones = st.text_area("Observaciones")
       btn_submit = st.form_submit_button("Guardar Registro")
