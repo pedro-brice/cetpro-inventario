@@ -14,7 +14,6 @@ st.set_page_config(
 
 # --- INICIALIZACIÓN Y CONEXIÓN DE BASE DE DATOS NUEVA ---
 def get_connection():
-  # Usamos un archivo nuevo (v2) para evitar conflictos con la estructura anterior
   conn = sqlite3.connect("inventario_v2.db", check_same_thread=False)
   return conn
 
@@ -223,6 +222,23 @@ df_actual = obtener_inventario(especialidad_sel)
 if not df_actual.empty:
   st.dataframe(df_actual, use_container_width=True)
 
+  # Botón para exportar SOLAMENTE la especialidad seleccionada
+  output_esp = io.BytesIO()
+  with pd.ExcelWriter(output_esp, engine="openpyxl") as writer:
+    df_actual.to_excel(writer, sheet_name="Inventario", index=False)
+  output_esp.seek(0)
+
+  st.download_button(
+      label=f"📥 Exportar '{especialidad_sel}' a Excel",
+      data=output_esp,
+      file_name=(
+          f"Inventario_{especialidad_sel.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+      ),
+      mime=(
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ),
+  )
+
   if st.session_state.logged_in:
     st.write("---")
     st.subheader("Eliminar Registro")
@@ -244,24 +260,24 @@ if not df_actual.empty:
 else:
   st.info("No hay equipos registrados en esta especialidad.")
 
-# --- BOTÓN DE EXPORTACIÓN A EXCEL ---
+# --- BOTÓN DE EXPORTACIÓN GENERAL A EXCEL ---
 st.write("---")
 df_total = obtener_todo_inventario()
 
 if not df_total.empty:
-  output = io.BytesIO()
-  with pd.ExcelWriter(output, engine="openpyxl") as writer:
+  output_total = io.BytesIO()
+  with pd.ExcelWriter(output_total, engine="openpyxl") as writer:
     for esp in ESPECIALIDADES:
       df_esp = df_total[df_total["especialidad"] == esp]
       nombre_hoja = esp[:31]
       df_esp.to_excel(writer, sheet_name=nombre_hoja, index=False)
-  output.seek(0)
+  output_total.seek(0)
 
   st.download_button(
-      label="📊 Exportar Todo el Inventario Clasificado a Excel (.xlsx)",
-      data=output,
+      label="📊 Exportar Todo el Inventario Clasificado por Pestañas (.xlsx)",
+      data=output_total,
       file_name=(
-          f"Inventario_CETPRO_La_Arena_{datetime.now().strftime('%Y%m%d')}.xlsx"
+          f"Inventario_Completo_CETPRO_La_Arena_{datetime.now().strftime('%Y%m%d')}.xlsx"
       ),
       mime=(
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
