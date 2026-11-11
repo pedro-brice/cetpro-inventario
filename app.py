@@ -21,23 +21,28 @@ def get_connection():
 def init_db():
   conn = get_connection()
   cursor = conn.cursor()
+  # Se crea la tabla con los nuevos campos solicitados
   cursor.execute("""
         CREATE TABLE IF NOT EXISTS inventario (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             especialidad TEXT,
-            nombre TEXT,
-            cantidad INTEGER,
+            codigo TEXT,
+            equipo TEXT,
+            marca TEXT,
+            modelo TEXT,
+            serie TEXT,
             estado TEXT,
-            responsable TEXT,
-            observacion TEXT,
-            fecha TEXT
+            ubicacion TEXT,
+            responsables TEXT,
+            fecha TEXT,
+            observaciones TEXT
         )
     """)
   conn.commit()
   conn.close()
 
 
-# Asegurar la creación de la tabla antes de cualquier consulta
+# Asegurar la creación/actualización de la tabla
 init_db()
 
 # --- ESPECIALIDADES OFICIALES DEL CETPRO ---
@@ -59,7 +64,7 @@ if "admin_password" not in st.session_state:
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
-    "<h1 style='text-align: center; color: #008000;'>CETPRO La Arena</h1>",
+    "<h1 style='text-align: center; color: #1E3A8A;'>CETPRO La Arena</h1>",
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -123,7 +128,9 @@ def obtener_inventario(especialidad):
   conn = get_connection()
   try:
     df = pd.read_sql_query(
-        "SELECT * FROM inventario WHERE especialidad = ?",
+        "SELECT id, codigo, equipo, marca, modelo, serie, estado, ubicacion,"
+        " responsables, fecha, observaciones FROM inventario WHERE especialidad"
+        " = ?",
         conn,
         params=(especialidad,),
     )
@@ -137,7 +144,11 @@ def obtener_inventario(especialidad):
 def obtener_todo_inventario():
   conn = get_connection()
   try:
-    df = pd.read_sql_query("SELECT * FROM inventario", conn)
+    df = pd.read_sql_query(
+        "SELECT especialidad, codigo, equipo, marca, modelo, serie, estado,"
+        " ubicacion, responsables, fecha, observaciones FROM inventario",
+        conn,
+    )
   except Exception:
     df = pd.DataFrame()
   finally:
@@ -150,46 +161,61 @@ st.subheader(f"Gestión de Inventario: {especialidad_sel}")
 
 # Registrar nuevo componente (Solo Administrador)
 if st.session_state.logged_in:
-  with st.expander(f"➕ Registrar Nuevo Componente en {especialidad_sel}"):
+  with st.expander(f"➕ Registrar Nuevo Equipo en {especialidad_sel}"):
     with st.form("form_registrar"):
-      col1, col2 = st.columns(2)
+      col1, col2, col3 = st.columns(3)
+
       with col1:
-        nombre_item = st.text_input("Nombre del Bien / Equipo")
-        cantidad = st.number_input("Cantidad", min_value=1, value=1, step=1)
+        codigo = st.text_input("Código Patrimonial / Interno")
+        equipo = st.text_input("Equipo / Bien")
+        marca = st.text_input("Marca")
+
       with col2:
+        modelo = st.text_input("Modelo")
+        serie = st.text_input("N° de Serie")
         estado = st.selectbox(
             "Estado", ["Bueno", "Regular", "Malo", "En Mantenimiento"]
         )
-        responsable = st.text_input("Responsable / Docente")
 
-      observacion = st.text_area("Observaciones")
+      with col3:
+        ubicacion = st.text_input("Ubicación / Taller")
+        responsables = st.text_input("Responsable(s)")
+        fecha = st.date_input("Fecha de Registro", value=datetime.now()).strftime(
+            "%Y-%m-%d"
+        )
+
+      observaciones = st.text_area("Observaciones")
       btn_submit = st.form_submit_button("Guardar Registro")
 
       if btn_submit:
-        if nombre_item.strip() != "":
+        if equipo.strip() != "":
           conn = get_connection()
           cursor = conn.cursor()
           cursor.execute(
               """
-                        INSERT INTO inventario (especialidad, nombre, cantidad, estado, responsable, observacion, fecha)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO inventario (especialidad, codigo, equipo, marca, modelo, serie, estado, ubicacion, responsables, fecha, observaciones)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
               (
                   especialidad_sel,
-                  nombre_item,
-                  int(cantidad),
+                  codigo,
+                  equipo,
+                  marca,
+                  modelo,
+                  serie,
                   estado,
-                  responsable,
-                  observacion,
-                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                  ubicacion,
+                  responsables,
+                  fecha,
+                  observaciones,
               ),
           )
           conn.commit()
           conn.close()
-          st.success("¡Registro guardado exitosamente!")
+          st.success("¡Equipo guardado exitosamente!")
           st.rerun()
         else:
-          st.warning("El nombre del componente es obligatorio.")
+          st.warning("El nombre del equipo es obligatorio.")
 
 # Mostrar registros de la especialidad
 df_actual = obtener_inventario(especialidad_sel)
@@ -216,7 +242,7 @@ if not df_actual.empty:
         st.success("Registro eliminado correctamente.")
         st.rerun()
 else:
-  st.info("No hay registros guardados en esta especialidad.")
+  st.info("No hay equipos registrados en esta especialidad.")
 
 # --- BOTÓN DE EXPORTACIÓN A EXCEL ---
 st.write("---")
@@ -227,7 +253,7 @@ if not df_total.empty:
   with pd.ExcelWriter(output, engine="openpyxl") as writer:
     for esp in ESPECIALIDADES:
       df_esp = df_total[df_total["especialidad"] == esp]
-      nombre_hoja = esp[:31]  # Límite de caracteres para pestañas de Excel
+      nombre_hoja = esp[:31]
       df_esp.to_excel(writer, sheet_name=nombre_hoja, index=False)
   output.seek(0)
 
