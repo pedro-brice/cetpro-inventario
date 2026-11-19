@@ -83,7 +83,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<h3 style='text-align: center; color: #4B5563;'>Sistema de Control de"
+    "<h3 style='text-align: center; color: #B80201;'>Sistema de Control de"
     " Inventario Institucional</h3>",
     unsafe_allow_html=True,
 )
