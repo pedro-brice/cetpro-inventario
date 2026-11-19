@@ -7,7 +7,7 @@ import streamlit as st
 # --- CONFIGURACIÓN DE PÁGINA Y ESTILO (FONDO AMARILLO CLARITO) ---
 st.set_page_config(
     page_title="Sistema de Inventario - CETPRO La Arena",
-    page_icon="📦",
+    page_icon="",
     layout="wide",
 )
 
@@ -90,7 +90,7 @@ st.markdown(
 st.write("---")
 
 # --- MENÚ LATERAL (SIDEBAR) ---
-st.sidebar.title("Navegación")
+st.sidebar.title("")
 especialidad_sel = st.sidebar.selectbox(
     "Seleccione Especialidad:", ESPECIALIDADES
 )
