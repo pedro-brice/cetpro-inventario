@@ -111,7 +111,7 @@ if not st.session_state.logged_in:
       st.sidebar.error("Contraseña incorrecta")
 else:
   st.sidebar.success("Modo Administrador Activo")
-  if st.sidebar.button("🔑 Cambiar Contraseña"):
+  if st.sidebar.button(" Cambiar Contraseña"):
     st.session_state.changing_password = True
   if st.sidebar.button("Cerrar Sesión"):
     st.session_state.logged_in = False
@@ -245,7 +245,7 @@ if not df_actual.empty:
   output_esp.seek(0)
 
   st.download_button(
-      label=f"📥 Exportar '{especialidad_sel}' a Excel",
+      label=f" Exportar '{especialidad_sel}' a Excel",
       data=output_esp,
       file_name=(
           f"Inventario_{especialidad_sel.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.xlsx"
@@ -290,7 +290,7 @@ if not df_total.empty:
   output_total.seek(0)
 
   st.download_button(
-      label="📊 Exportar Todo el Inventario Clasificado por Pestañas (.xlsx)",
+      label=" Exportar Todo el Inventario Clasificado por Pestañas (.xlsx)",
       data=output_total,
       file_name=(
           f"Inventario_Completo_CETPRO_La_Arena_{datetime.now().strftime('%Y%m%d')}.xlsx"
