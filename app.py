@@ -75,7 +75,7 @@ ESPECIALIDADES = [
 if "logged_in" not in st.session_state:
   st.session_state.logged_in = False
 if "admin_password" not in st.session_state:
-  st.session_state.admin_password = "admin"
+  st.session_state.admin_password = "cetpro2026"
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
