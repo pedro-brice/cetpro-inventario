@@ -4,14 +4,14 @@ import sqlite3
 import pandas as pd
 import streamlit as st
 
-# --- CONFIGURACIÓN DE PÁGINA Y ESTILO (FONDO AMARILLO CLARITO) ---
+# --- CONFIGURACIÓN DE PÁGINA Y ESTILO ---
 st.set_page_config(
     page_title="Sistema de Inventario - CETPRO La Arena",
     page_icon="",
     layout="wide",
 )
 
-# Inyectar CSS personalizado para cambiar el fondo a un amarillo clarito institucional
+#  CSS personalizado
 st.markdown(
     """
     <style>
@@ -60,7 +60,7 @@ def init_db():
 
 init_db()
 
-# --- ESPECIALIDADES OFICIALES DEL CETPRO ---
+# --- ESPECIALIDADES DEL CETPRO ---
 ESPECIALIDADES = [
     "Plataformas y servicios de TI",
     "Fabricación de prendas de vestir",
@@ -71,7 +71,7 @@ ESPECIALIDADES = [
     "Panadería y Pastelería",
 ]
 
-# --- GESTIÓN DE SESIÓN Y CONTRASEÑA ---
+# --- INICIO DE SESIÓN Y CONTRASEÑA ---
 if "logged_in" not in st.session_state:
   st.session_state.logged_in = False
 if "admin_password" not in st.session_state:
@@ -89,7 +89,7 @@ st.markdown(
 )
 st.write("---")
 
-# --- MENÚ LATERAL (SIDEBAR) ---
+# --- MENÚ LATERAL ---
 st.sidebar.title("")
 especialidad_sel = st.sidebar.selectbox(
     "Seleccione Especialidad:", ESPECIALIDADES
@@ -117,7 +117,7 @@ else:
     st.session_state.logged_in = False
     st.rerun()
 
-# Modal para cambiar contraseña
+# para cambiar contraseña
 if (
     st.session_state.get("logged_in", False)
     and st.session_state.get("changing_password", False)
