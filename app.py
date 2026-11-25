@@ -89,7 +89,7 @@ st.markdown(
 st.write("---")
 
 # --- MENÚ LATERAL  ---
-st.sidebar.title("Navegación")
+st.sidebar.title("")
 especialidad_sel = st.sidebar.selectbox(
     "Seleccione Especialidad:", ESPECIALIDADES
 )
