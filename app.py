@@ -4,22 +4,19 @@ import sqlite3
 import pandas as pd
 import streamlit as st
 
-# --- CONFIGURACIÓN DE PÁGINA Y ESTILO ---
+# --- CONFIGURACIÓN DE PÁGINA Y ESTILO  ---
 st.set_page_config(
     page_title="Sistema de Inventario - CETPRO La Arena",
     page_icon="",
     layout="wide",
 )
 
-#  CSS personalizado
 st.markdown(
     """
     <style>
-    /* Fondo general de la aplicación */
     .stApp {
         background-color: #FFFFE3;
     }
-    /* Estilo para los contenedores principales y tarjetas */
     div.block-container {
         padding-top: 2rem;
     }
@@ -60,7 +57,7 @@ def init_db():
 
 init_db()
 
-# --- ESPECIALIDADES DEL CETPRO ---
+# --- ESPECIALIDADES OFICIALES DEL CETPRO ---
 ESPECIALIDADES = [
     "Plataformas y servicios de TI",
     "Fabricación de prendas de vestir",
@@ -71,11 +68,13 @@ ESPECIALIDADES = [
     "Panadería y Pastelería",
 ]
 
-# --- INICIO DE SESIÓN Y CONTRASEÑA ---
+ESTADOS_DISPONIBLES = ["Bueno", "Regular", "Malo", "En Mantenimiento"]
+
+# --- GESTIÓN DE SESIÓN Y CONTRASEÑA ---
 if "logged_in" not in st.session_state:
   st.session_state.logged_in = False
 if "admin_password" not in st.session_state:
-  st.session_state.admin_password = "cetpro2026"
+  st.session_state.admin_password = "admin"
 
 # --- TÍTULO PRINCIPAL ---
 st.markdown(
@@ -89,8 +88,8 @@ st.markdown(
 )
 st.write("---")
 
-# --- MENÚ LATERAL ---
-st.sidebar.title("")
+# --- MENÚ LATERAL  ---
+st.sidebar.title("Navegación")
 especialidad_sel = st.sidebar.selectbox(
     "Seleccione Especialidad:", ESPECIALIDADES
 )
@@ -117,7 +116,7 @@ else:
     st.session_state.logged_in = False
     st.rerun()
 
-# para cambiar contraseña
+# Modal para cambiar contraseña
 if (
     st.session_state.get("logged_in", False)
     and st.session_state.get("changing_password", False)
@@ -176,21 +175,19 @@ st.subheader(f"Gestión de Inventario: {especialidad_sel}")
 
 # Registrar nuevo componente (Solo Administrador)
 if st.session_state.logged_in:
-  with st.expander(f"➕ Registrar Nuevo Equipo en {especialidad_sel}"):
+  with st.expander(f" Registrar Nuevo Equipo en {especialidad_sel}"):
     with st.form("form_registrar", clear_on_submit=True):
       col1, col2, col3 = st.columns(3)
 
       with col1:
-        codigo = st.text_input("Código Patrimonial")
+        codigo = st.text_input("Código Patrimonial / Interno")
         equipo = st.text_input("Equipo / Bien")
         marca = st.text_input("Marca")
 
       with col2:
         modelo = st.text_input("Modelo")
         serie = st.text_input("N° de Serie")
-        estado = st.selectbox(
-            "Estado", ["Bueno", "Regular", "Malo", "En Mantenimiento"]
-        )
+        estado = st.selectbox("Estado", ESTADOS_DISPONIBLES)
 
       with col3:
         ubicacion = st.text_input("Ubicación / Taller")
@@ -255,20 +252,133 @@ if not df_actual.empty:
       ),
   )
 
+  # --- EDITAR Y ELIMINAR REGISTROS  ---
   if st.session_state.logged_in:
     st.write("---")
-    st.subheader("Eliminar Registro")
     ids_disponibles = (
         df_actual["id"].tolist() if "id" in df_actual.columns else []
     )
+
     if ids_disponibles:
+      # 1. Sección para EDITAR registro
+      st.subheader(" Editar Registro")
+
+      # Mostrar etiqueta descriptiva con ID y nombre del equipo para facilitar la selección
+      def formato_registro(reg_id):
+        fila = df_actual[df_actual["id"] == reg_id].iloc[0]
+        return f"ID {reg_id} — {fila['equipo']} ({fila['codigo'] or 'Sin código'})"
+
+      id_a_editar = st.selectbox(
+          "Seleccione el registro que desea editar",
+          ids_disponibles,
+          format_func=formato_registro,
+      )
+
+      registro_sel = df_actual[df_actual["id"] == id_a_editar].iloc[0]
+
+      # Parsear fecha previa de forma segura
+      try:
+        fecha_previa = datetime.strptime(
+            str(registro_sel["fecha"])[:10], "%Y-%m-%d"
+        ).date()
+      except Exception:
+        fecha_previa = datetime.now().date()
+
+      estado_previo = (
+          registro_sel["estado"]
+          if registro_sel["estado"] in ESTADOS_DISPONIBLES
+          else ESTADOS_DISPONIBLES[0]
+      )
+      indice_estado = ESTADOS_DISPONIBLES.index(estado_previo)
+
+      with st.form(f"form_editar_{id_a_editar}"):
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+          edit_codigo = st.text_input(
+              "Código Patrimonial / Interno",
+              value=str(registro_sel["codigo"] or ""),
+          )
+          edit_equipo = st.text_input(
+              "Equipo / Bien", value=str(registro_sel["equipo"] or "")
+          )
+          edit_marca = st.text_input(
+              "Marca", value=str(registro_sel["marca"] or "")
+          )
+
+        with col2:
+          edit_modelo = st.text_input(
+              "Modelo", value=str(registro_sel["modelo"] or "")
+          )
+          edit_serie = st.text_input(
+              "N° de Serie", value=str(registro_sel["serie"] or "")
+          )
+          edit_estado = st.selectbox(
+              "Estado", ESTADOS_DISPONIBLES, index=indice_estado
+          )
+
+        with col3:
+          edit_ubicacion = st.text_input(
+              "Ubicación / Taller", value=str(registro_sel["ubicacion"] or "")
+          )
+          edit_responsables = st.text_input(
+              "Responsable(s)", value=str(registro_sel["responsables"] or "")
+          )
+          edit_fecha = st.date_input(
+              "Fecha de Registro", value=fecha_previa
+          ).strftime("%Y-%m-%d")
+
+        edit_observaciones = st.text_area(
+            "Observaciones", value=str(registro_sel["observaciones"] or "")
+        )
+        btn_actualizar = st.form_submit_button(" Guardar Cambios")
+
+        if btn_actualizar:
+          if edit_equipo.strip() != "":
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                                UPDATE inventario
+                                SET codigo = ?, equipo = ?, marca = ?, modelo = ?, serie = ?,
+                                    estado = ?, ubicacion = ?, responsables = ?, fecha = ?, observaciones = ?
+                                WHERE id = ?
+                            """,
+                (
+                    edit_codigo,
+                    edit_equipo,
+                    edit_marca,
+                    edit_modelo,
+                    edit_serie,
+                    edit_estado,
+                    edit_ubicacion,
+                    edit_responsables,
+                    edit_fecha,
+                    edit_observaciones,
+                    int(id_a_editar),
+                ),
+            )
+            conn.commit()
+            conn.close()
+            st.success(f"¡Registro ID {id_a_editar} actualizado correctamente!")
+            st.rerun()
+          else:
+            st.warning("El nombre del equipo es obligatorio.")
+
+      # 2. Sección para ELIMINAR registro
+      st.write("---")
+      st.subheader(" Eliminar Registro")
       id_a_borrar = st.selectbox(
-          "Seleccione el ID del registro a eliminar", ids_disponibles
+          "Seleccione el ID del registro a eliminar",
+          ids_disponibles,
+          format_func=formato_registro,
       )
       if st.button("Eliminar Registro Seleccionado"):
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM inventario WHERE id = ?", (id_a_borrar,))
+        cursor.execute(
+            "DELETE FROM inventario WHERE id = ?", (int(id_a_borrar),)
+        )
         conn.commit()
         conn.close()
         st.success("Registro eliminado correctamente.")
